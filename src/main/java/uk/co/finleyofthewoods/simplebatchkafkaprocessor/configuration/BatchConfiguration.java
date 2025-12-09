@@ -11,8 +11,12 @@ import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.infrastructure.item.database.JpaItemWriter;
 import org.springframework.batch.infrastructure.item.database.builder.JpaItemWriterBuilder;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.task.ThreadPoolTaskExecutorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import uk.co.finleyofthewoods.simplebatchkafkaprocessor.models.Message;
 import uk.co.finleyofthewoods.simplebatchkafkaprocessor.processors.MessageItemProcessor;
 import uk.co.finleyofthewoods.simplebatchkafkaprocessor.readers.KafkaItemReader;
@@ -76,13 +80,23 @@ public class BatchConfiguration {
     }
 
     @Bean
-    public Step step(JobRepository jobRepository, KafkaItemReader kafkaItemReader,
+    public AsyncTaskExecutor taskExecutor() {
+        return new ThreadPoolTaskExecutorBuilder()
+                .corePoolSize(4)
+                .maxPoolSize(10)
+                .queueCapacity(25)
+                .build();
+    }
+
+    @Bean
+    public Step step(JobRepository jobRepository, AsyncTaskExecutor taskExecutor, KafkaItemReader kafkaItemReader,
                      MessageItemProcessor messageItemProcessor, JpaItemWriter<Message> jpaItemWriter) {
         return new StepBuilder(stepName, jobRepository)
                 .<Message, Message>chunk(chunkSize)
                 .reader(kafkaItemReader)
                 .processor(messageItemProcessor)
                 .writer(jpaItemWriter)
+                .taskExecutor(taskExecutor)
                 .build();
     }
 
