@@ -26,7 +26,7 @@ public class JobScheduler {
             fixedDelayString = "${spring.batch.job.scheduling.fixed-delay}",
             initialDelayString = "${spring.batch.job.scheduling.initial-delay}")
     @SchedulerLock(
-            name = "${spring.application.name}",
+            name = "batch-kafka-job",
             lockAtMostFor = "${shedlock.lock-at-most-for}",
             lockAtLeastFor = "${shedlock.lock-at-least-for}")
     public void runJob() {
@@ -37,9 +37,10 @@ public class JobScheduler {
 
             logger.info("Starting job: {}", job.getName());
             JobExecution jobExecution = operator.start(job, params);
-            logger.info("Job started. Job ID: {}", jobExecution.getId());
+            logger.info("Job started. Job ID: {}, Status: {}", jobExecution.getId(), jobExecution.getStatus());
         } catch (Exception e) {
             logger.error("Error running job", e);
+            throw new RuntimeException("Failed to run batch job", e);
         }
     }
 }
